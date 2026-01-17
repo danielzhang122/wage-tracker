@@ -132,26 +132,27 @@ class FadingMilestone:
         self.x = x
         self.y = y
         self.alpha = 0
-        self.duration = 4000
+        self.duration = 3000
         self.start_time = pygame.time.get_ticks()
         self.scale = 1.0
     
-    def update(self):
+    def update(self, y_offset=0):
+        self.y = 280 + y_offset  # Base position plus offset for stacking
         elapsed = pygame.time.get_ticks() - self.start_time
         progress = elapsed / self.duration
         
         if progress >= 1:
             return False
         
-        # Fade in first 20%, hold middle 60%, fade out last 20%
-        if progress < 0.2:
-            self.alpha = int(255 * (progress / 0.2))
-            self.scale = 0.8 + (0.2 * (progress / 0.2))
-        elif progress < 0.8:
+        # Fade in first 15%, hold middle 70%, fade out last 15%
+        if progress < 0.15:
+            self.alpha = int(255 * (progress / 0.15))
+            self.scale = 0.8 + (0.2 * (progress / 0.15))
+        elif progress < 0.85:
             self.alpha = 255
             self.scale = 1.0
         else:
-            fade_progress = (progress - 0.8) / 0.2
+            fade_progress = (progress - 0.85) / 0.15
             self.alpha = int(255 * (1 - fade_progress))
             self.scale = 1.0
         
@@ -159,14 +160,14 @@ class FadingMilestone:
     
     def draw(self, surface):
         text = f"You've earned {self.item_name}!"
-        font_size = int(32 * self.scale)
+        font_size = int(28 * self.scale)
         font = pygame.font.Font(None, font_size)
         text_surf = font.render(text, True, (255, 215, 0))
         text_surf.set_alpha(self.alpha)
         text_rect = text_surf.get_rect(center=(self.x, self.y))
         
         # Draw background box
-        padding = 20
+        padding = 15
         box_rect = pygame.Rect(
             text_rect.x - padding,
             text_rect.y - padding // 2,
@@ -174,8 +175,8 @@ class FadingMilestone:
             text_rect.height + padding
         )
         box_surf = pygame.Surface((box_rect.width, box_rect.height), pygame.SRCALPHA)
-        box_color = (*BLACK, int(180 * (self.alpha / 255)))
-        pygame.draw.rect(box_surf, box_color, box_surf.get_rect(), border_radius=10)
+        box_color = (*BLACK, int(200 * (self.alpha / 255)))
+        pygame.draw.rect(box_surf, box_color, box_surf.get_rect(), border_radius=8)
         surface.blit(box_surf, (box_rect.x, box_rect.y))
         
         # Draw text
@@ -445,7 +446,12 @@ class WageTracker:
         
         self.increments = [inc for inc in self.increments if inc.update()]
         
-        self.milestone_messages = [msg for msg in self.milestone_messages if msg.update()]
+        # Update milestone messages with stacking
+        updated_messages = []
+        for i, msg in enumerate(self.milestone_messages):
+            if msg.update(y_offset=i * 40):  # Stack them 40 pixels apart
+                updated_messages.append(msg)
+        self.milestone_messages = updated_messages
         
         self.confetti = [c for c in self.confetti if c.update()]
         for c in self.confetti:
@@ -509,17 +515,25 @@ class WageTracker:
                 draw_surface.blit(tax_surf, tax_rect)
         
         info_y = 300
-        rate_rect = pygame.Rect(50, info_y, 240, 80)
+        rate_rect = pygame.Rect(50, info_y, 160, 80)
         pygame.draw.rect(draw_surface, LIGHT_GRAY, rate_rect, border_radius=10)
         rate_label = small_font.render("Hourly Rate", True, GRAY)
         rate_value = medium_font.render(f"${self.hourly_wage:.2f}/hr", True, BLACK)
         draw_surface.blit(rate_label, (rate_rect.centerx - rate_label.get_width() // 2, rate_rect.y + 15))
         draw_surface.blit(rate_value, (rate_rect.centerx - rate_value.get_width() // 2, rate_rect.y + 45))
         
-        time_rect = pygame.Rect(310, info_y, 240, 80)
+        minute_rect = pygame.Rect(230, info_y, 160, 80)
+        pygame.draw.rect(draw_surface, LIGHT_GRAY, minute_rect, border_radius=10)
+        minute_label = small_font.render("Per Minute", True, GRAY)
+        per_minute = self.hourly_wage / 60
+        minute_value = medium_font.render(f"${per_minute:.2f}/min", True, BLACK)
+        draw_surface.blit(minute_label, (minute_rect.centerx - minute_label.get_width() // 2, minute_rect.y + 15))
+        draw_surface.blit(minute_value, (minute_rect.centerx - minute_value.get_width() // 2, minute_rect.y + 45))
+        
+        time_rect = pygame.Rect(410, info_y, 140, 80)
         pygame.draw.rect(draw_surface, LIGHT_GRAY, time_rect, border_radius=10)
         time_label = small_font.render("Clocked In", True, GRAY)
-        time_value = medium_font.render(self.start_time.strftime("%I:%M %p"), True, BLACK)
+        time_value = small_font.render(self.start_time.strftime("%I:%M %p"), True, BLACK)
         draw_surface.blit(time_label, (time_rect.centerx - time_label.get_width() // 2, time_rect.y + 15))
         draw_surface.blit(time_value, (time_rect.centerx - time_value.get_width() // 2, time_rect.y + 45))
         
@@ -634,6 +648,7 @@ class WageTracker:
     
     def handle_new_shift(self):
         self.show_summary = False
+        self.is_tracking = False
         self.wage_input.text = ''
         self.tax_input.text = ''
         self.time_input.text = ''
@@ -643,6 +658,11 @@ class WageTracker:
         self.total_hours = 0
         self.unlocked_items = set()
         self.milestone_messages = []
+        self.last_update_minute = -1
+        self.increments = []
+        self.last_milestone = 0
+        self.celebration_active = False
+        self.confetti = []
     
     def run(self):
         running = True
