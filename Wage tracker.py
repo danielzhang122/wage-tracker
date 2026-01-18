@@ -2,6 +2,7 @@ import pygame
 import sys
 import math
 import random
+import os
 from datetime import datetime, timedelta
 
 # Initialize Pygame
@@ -24,6 +25,22 @@ DARK_RED = (185, 28, 28)
 # Setup display
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Real-Time Wage Tracker")
+
+# Set window icon (works for both script and exe)
+try:
+    if getattr(sys, 'frozen', False):
+        # Running as compiled exe
+        base_path = sys._MEIPASS
+    else:
+        # Running as script
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    
+    icon_path = os.path.join(base_path, 'icon.png')
+    icon = pygame.image.load(icon_path)
+    pygame.display.set_icon(icon)
+except Exception as e:
+    pass  # If icon file not found, just skip it
+
 clock = pygame.time.Clock()
 
 # Fonts
