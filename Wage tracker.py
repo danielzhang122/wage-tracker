@@ -284,6 +284,9 @@ class WageTracker:
         self.last_milestone = 0
         self.celebration_active = False
         self.celebration_timer = 0
+        self.minute_celebration_active = False
+        self.minute_celebration_timer = 0
+        self.minute_amount = 0
         self.confetti = []
         self.rainbow_offset = 0
         self.money_rain = []
@@ -349,16 +352,12 @@ class WageTracker:
                 self.unlocked_items.add(price)
                 self.milestone_messages.append(FadingMilestone(item_name, WIDTH // 2, 280))
         
-        current_milestone = int(earnings / 50) * 50
-        if current_milestone > self.last_milestone and current_milestone > 0:
-            self.last_milestone = current_milestone
-            self.trigger_celebration()
-        
         return earnings, hours
     
-    def trigger_celebration(self):
-        self.celebration_active = True
-        self.celebration_timer = 0
+    def trigger_minute_celebration(self, amount):
+        self.minute_celebration_active = True
+        self.minute_celebration_timer = 0
+        self.minute_amount = amount
         for _ in range(50):
             self.confetti.append(Confetti())
     
@@ -392,6 +391,8 @@ class WageTracker:
             increment = self.hourly_wage / 60
             self.increments.append(FadingIncrement(increment, WIDTH // 2 - 50, 180))
             self.last_update_minute = current_minute
+            # Trigger celebration showing the per-minute earnings
+            self.trigger_minute_celebration(increment)
     
     def draw_setup_screen(self):
         screen.fill(LIGHT_GREEN)
@@ -410,16 +411,17 @@ class WageTracker:
         self.clock_in_btn.draw(screen)
     
     def draw_tracking_screen(self):
-        if self.celebration_active:
-            self.celebration_timer += 1
+        # Handle per-minute celebration
+        if self.minute_celebration_active:
+            self.minute_celebration_timer += 1
             self.rainbow_offset = (self.rainbow_offset + 5) % 360
             
-            intensity = max(0, 15 - self.celebration_timer * 0.1)
+            intensity = max(0, 15 - self.minute_celebration_timer * 0.1)
             self.shake_offset_x = random.randint(-int(intensity), int(intensity))
             self.shake_offset_y = random.randint(-int(intensity), int(intensity))
             
-            if self.celebration_timer > 180:
-                self.celebration_active = False
+            if self.minute_celebration_timer > 180:
+                self.minute_celebration_active = False
                 self.confetti = []
                 self.shake_offset_x = 0
                 self.shake_offset_y = 0
@@ -429,7 +431,7 @@ class WageTracker:
         
         draw_surface = pygame.Surface((WIDTH, HEIGHT))
         
-        if self.celebration_active:
+        if self.minute_celebration_active:
             for i in range(HEIGHT):
                 color = self.get_rainbow_color(self.rainbow_offset + i * 0.5)
                 pygame.draw.line(draw_surface, color, (0, i), (WIDTH, i))
@@ -457,7 +459,7 @@ class WageTracker:
         for c in self.confetti:
             c.draw(draw_surface)
         
-        title_color = WHITE if self.celebration_active else BLACK
+        title_color = WHITE if self.minute_celebration_active else BLACK
         display_earnings = earnings * (1 - self.tax_rate) if self.tax_toggle.is_on else earnings
         title_text = "After Tax Earnings" if self.tax_toggle.is_on else "Before Tax Earnings"
         title = medium_font.render(title_text, True, title_color)
@@ -465,13 +467,13 @@ class WageTracker:
         draw_surface.blit(title, title_rect)
         
         earnings_text = f"${display_earnings:.2f}"
-        earnings_color = WHITE if self.celebration_active else GREEN
+        earnings_color = WHITE if self.minute_celebration_active else GREEN
         earnings_surf = large_font.render(earnings_text, True, earnings_color)
         earnings_rect = earnings_surf.get_rect(center=(WIDTH // 2, 150))
         
         bg_rect = pygame.Rect(50, 100, WIDTH - 100, 120)
-        if self.celebration_active:
-            pulse = abs(math.sin(self.celebration_timer * 0.1)) * 10
+        if self.minute_celebration_active:
+            pulse = abs(math.sin(self.minute_celebration_timer * 0.1)) * 10
             bg_rect = pygame.Rect(50 - pulse, 100 - pulse/2, WIDTH - 100 + pulse*2, 120 + pulse)
             border_color = self.get_rainbow_color(self.rainbow_offset + 180)
             pygame.draw.rect(draw_surface, WHITE, bg_rect, border_radius=15)
@@ -488,10 +490,10 @@ class WageTracker:
         for msg in self.milestone_messages:
             msg.draw(draw_surface)
         
-        if self.celebration_active:
-            congrats = title_font.render(f"${self.last_milestone}!", True, WHITE)
+        if self.minute_celebration_active:
+            congrats = title_font.render(f"${self.minute_amount:.2f}!", True, WHITE)
             congrats_rect = congrats.get_rect(center=(WIDTH // 2, 260))
-            shadow = title_font.render(f"${self.last_milestone}!", True, BLACK)
+            shadow = title_font.render(f"${self.minute_amount:.2f}!", True, BLACK)
             draw_surface.blit(shadow, (congrats_rect.x + 3, congrats_rect.y + 3))
             draw_surface.blit(congrats, congrats_rect)
         else:
@@ -635,6 +637,9 @@ class WageTracker:
                 self.tax_toggle.is_on = False
                 self.unlocked_items = set()
                 self.milestone_messages = []
+                self.minute_celebration_active = False
+                self.minute_celebration_timer = 0
+                self.minute_amount = 0
             else:
                 print("Invalid input!")
         except ValueError:
@@ -663,6 +668,9 @@ class WageTracker:
         self.last_milestone = 0
         self.celebration_active = False
         self.confetti = []
+        self.minute_celebration_active = False
+        self.minute_celebration_timer = 0
+        self.minute_amount = 0
     
     def run(self):
         running = True
