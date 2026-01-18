@@ -476,7 +476,7 @@ class WageTracker:
         for c in self.confetti:
             c.draw(draw_surface)
         
-        title_color = WHITE if self.minute_celebration_active else BLACK
+        title_color = BLACK  # Always use black for better visibility
         display_earnings = earnings * (1 - self.tax_rate) if self.tax_toggle.is_on else earnings
         title_text = "After Tax Earnings" if self.tax_toggle.is_on else "Before Tax Earnings"
         title = medium_font.render(title_text, True, title_color)
@@ -484,8 +484,7 @@ class WageTracker:
         draw_surface.blit(title, title_rect)
         
         earnings_text = f"${display_earnings:.2f}"
-        earnings_color = WHITE if self.minute_celebration_active else GREEN
-        earnings_surf = large_font.render(earnings_text, True, earnings_color)
+        earnings_surf = large_font.render(earnings_text, True, GREEN)
         earnings_rect = earnings_surf.get_rect(center=(WIDTH // 2, 150))
         
         bg_rect = pygame.Rect(50, 100, WIDTH - 100, 120)
@@ -493,6 +492,7 @@ class WageTracker:
             pulse = abs(math.sin(self.minute_celebration_timer * 0.1)) * 10
             bg_rect = pygame.Rect(50 - pulse, 100 - pulse/2, WIDTH - 100 + pulse*2, 120 + pulse)
             border_color = self.get_rainbow_color(self.rainbow_offset + 180)
+            # Draw solid white background with extra opacity during celebration
             pygame.draw.rect(draw_surface, WHITE, bg_rect, border_radius=15)
             pygame.draw.rect(draw_surface, border_color, bg_rect, 5, border_radius=15)
         else:
@@ -505,8 +505,9 @@ class WageTracker:
             inc.draw(draw_surface)
         
         if self.minute_celebration_active:
-            congrats = title_font.render(f"${self.minute_amount:.2f}!", True, WHITE)
+            congrats = title_font.render(f"${self.minute_amount:.2f}!", True, (255, 215, 0))
             congrats_rect = congrats.get_rect(center=(WIDTH // 2, 260))
+            # Add black shadow for better visibility on rainbow background
             shadow = title_font.render(f"${self.minute_amount:.2f}!", True, BLACK)
             draw_surface.blit(shadow, (congrats_rect.x + 3, congrats_rect.y + 3))
             draw_surface.blit(congrats, congrats_rect)
